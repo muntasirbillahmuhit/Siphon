@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Save a video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#EAF0F9; --panel:#DCE5F5; --ink:#0E1B33; --muted:#55627A;
+    --accent:#2447F5; --on-accent:#fff; --error:#B3261E; --line:#B9C6E0;
+    --font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0C1424; --panel:#16213A; --ink:#E8EEFA; --muted:#8C99B3;
+            --accent:#8EA2FF; --on-accent:#0C1424; --error:#FF8A80; --line:#2B3858; }
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:1.05rem; line-height:1.5;
+         min-height:100vh; padding:max(28px,env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom)); }
+  main { max-width:620px; margin:0 auto; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+
+  h1 { font-size:clamp(2.6rem,11vw,4.2rem); line-height:.98; font-weight:800; letter-spacing:-.035em; margin:32px 0 14px; }
+  .lede { color:var(--muted); margin:0 0 32px; max-width:34ch; }
+
+  /* The one memorable element: an oversized, underlined input */
+  .finder { display:flex; flex-direction:column; gap:14px; }
+  .field { display:flex; align-items:center; gap:8px; border-bottom:3px solid var(--ink); padding-bottom:6px; }
+  .field:focus-within { border-color:var(--accent); }
+  .field input { flex:1; min-width:0; border:0; background:transparent; color:var(--ink); font:inherit;
+                 font-size:clamp(1.3rem,5.5vw,1.8rem); font-weight:600; padding:8px 0; letter-spacing:-.01em; }
+  .field input::placeholder { color:var(--muted); opacity:.7; font-weight:400; }
+  .field input:focus { outline:none; }
+
+  button { font:inherit; cursor:pointer; border:0; }
+  .btn { background:var(--accent); color:var(--on-accent); font-weight:800; font-size:1.1rem;
+         padding:16px 22px; border-radius:16px; width:100%; }
+  .btn:disabled { opacity:.55; cursor:wait; }
+  .ghost { background:transparent; color:var(--ink); font-weight:600; padding:8px 14px; border-radius:99px;
+           border:2px solid var(--line); font-size:.95rem; }
+
+  .msg { min-height:1.5em; margin:14px 0 0; font-size:.95rem; color:var(--muted); }
+  .msg.error { color:var(--error); font-weight:600; }
+
+  /* Result */
+  .result { margin-top:20px; background:var(--panel); border-radius:24px; padding:14px 14px 18px; }
+  .result.show { animation:rise .28s ease-out; }
+  @keyframes rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  .thumb { position:relative; border-radius:14px; overflow:hidden; background:var(--line); aspect-ratio:16/9; }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .len { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.78); color:#fff; font-size:.85rem;
+         font-weight:600; padding:2px 8px; border-radius:6px; font-variant-numeric:tabular-nums; }
+  .info { padding:14px 6px 4px; }
+  .info h2 { font-size:1.2rem; line-height:1.25; font-weight:800; letter-spacing:-.015em; margin:0 0 2px; }
+  .info p { margin:0; color:var(--muted); font-size:.95rem; }
+
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--bg); border-radius:14px; padding:4px; margin:14px 0 0; }
+  .seg label { text-align:center; padding:11px 8px; border-radius:11px; cursor:pointer; font-weight:600; }
+  .seg input, .chips input { position:absolute; opacity:0; pointer-events:none; }
+  .seg label:has(input:checked) { background:var(--ink); color:var(--bg); }
+  .seg label:has(input:focus-visible), .chips label:has(input:focus-visible) { outline:3px solid var(--accent); outline-offset:2px; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
+  .chips label { padding:8px 16px; border-radius:99px; border:2px solid var(--line); cursor:pointer; font-weight:600; font-size:.95rem; }
+  .chips label:has(input:checked) { border-color:var(--accent); background:var(--accent); color:var(--on-accent); }
+  .hidden { display:none !important; }
+  #dlBtn { margin-top:16px; }
+
+  footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
+  details summary { cursor:pointer; width:max-content; }
+  details input { display:block; width:100%; margin-top:10px; padding:11px 12px; border-radius:12px; border:2px solid var(--line);
+                  background:transparent; color:var(--ink); font:inherit; }
+  footer p { margin:10px 0 0; }
+
+  @media (prefers-reduced-motion: reduce) { .result.show { animation:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Save a video or its audio</h1>
+  <p class="lede">Paste a YouTube link and pick what you want to keep.</p>
+
+  <div class="finder">
+    <div class="field">
+      <input id="url" type="url" inputmode="url" placeholder="youtube.com/watch?v=" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="YouTube link">
+      <button id="pasteBtn" class="ghost" type="button">Paste</button>
+    </div>
+    <button id="fetchBtn" class="btn" type="button">Find video</button>
+  </div>
+  <p id="msg" class="msg" role="status" aria-live="polite"></p>
+
+  <section id="result" class="result hidden" aria-label="Video found">
+    <div class="thumb"><img id="thumb" alt=""><span id="len" class="len"></span></div>
+    <div class="info"><h2 id="title"></h2><p id="channel"></p></div>
+
+    <div class="seg" role="radiogroup" aria-label="Format">
+      <label><input type="radio" name="kind" value="video" checked>Video</label>
+      <label><input type="radio" name="kind" value="audio">Audio only</label>
+    </div>
+    <div id="chips" class="chips" role="radiogroup" aria-label="Video quality"></div>
+    <button id="dlBtn" class="btn" type="button">Download video</button>
+  </section>
+
+  <footer>
+    <details>
+      <summary id="serverLabel">Server</summary>
+      <input id="server" type="text" autocomplete="off" aria-label="Server address">
+      <p>This page needs <code>app.py</code> running. Enter the address it prints when it starts.</p>
+    </details>
+    <p>Only download content you own or have permission to save.</p>
+  </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentUrl = "";
+
+const DEFAULT_SERVER = "http://127.0.0.1:5000";
+let saved = "";
+try { saved = localStorage.getItem("ytdl_server") || ""; } catch (e) {}
+$("server").value = saved || (location.protocol.startsWith("http") ? location.origin : DEFAULT_SERVER);
+const server = () => $("server").value.trim().replace(/\/+$/, "");
+const label = () => { $("serverLabel").textContent = "Server: " + server(); };
+label();
+$("server").addEventListener("change", () => {
+  try { localStorage.setItem("ytdl_server", $("server").value.trim()); } catch (e) {}
+  label();
+});
+
+function say(text, isError) { $("msg").textContent = text || ""; $("msg").classList.toggle("error", !!isError); }
+const kind = () => document.querySelector("input[name=kind]:checked").value;
+
+function syncKind() {
+  const audio = kind() === "audio";
+  $("chips").classList.toggle("hidden", audio);
+  $("dlBtn").textContent = audio ? "Download audio" : "Download video";
+}
+document.querySelectorAll("input[name=kind]").forEach(r => r.addEventListener("change", syncKind));
+
+$("pasteBtn").onclick = async () => {
+  try { $("url").value = (await navigator.clipboard.readText()).trim(); $("url").focus(); }
+  catch (e) { say("Your browser blocked the clipboard. Long-press the field and choose Paste."); }
+};
+
+async function find() {
+  const url = $("url").value.trim();
+  if (!url) { say("Paste a YouTube link first.", true); return; }
+  say(""); $("result").classList.add("hidden");
+  $("fetchBtn").disabled = true; $("fetchBtn").textContent = "Looking...";
+  try {
+    const r = await fetch(server() + "/api/info", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "The server couldn't read that link.");
+    currentUrl = url;
+    $("thumb").src = d.thumbnail || "";
+    $("len").textContent = d.duration;
+    $("title").textContent = d.title;
+    $("channel").textContent = d.channel || "";
+    const opts = [["", "Best"], ...d.heights.map(h => [String(h), h + "p"])];
+    $("chips").innerHTML = opts.map(([v, t], i) =>
+      `<label><input type="radio" name="q" value="${v}"${i === 0 ? " checked" : ""}>${t}</label>`).join("");
+    syncKind();
+    $("result").classList.remove("hidden");
+    $("result").classList.remove("show"); void $("result").offsetWidth; $("result").classList.add("show");
+  } catch (e) {
+    say(e instanceof TypeError
+      ? `Can't reach the server at ${server()}. Start app.py, then check the address under Server below.`
+      : e.message, true);
+  }
+  $("fetchBtn").disabled = false; $("fetchBtn").textContent = "Find video";
+}
+$("fetchBtn").onclick = find;
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") find(); });
+
+// Hands the file to the browser's download manager, so large files don't sit in memory.
+$("dlBtn").onclick = () => {
+  const params = new URLSearchParams({ url: currentUrl });
+  const q = document.querySelector("input[name=q]:checked");
+  if (kind() === "audio") params.set("audio", "1");
+  else if (q && q.value) params.set("height", q.value);
+
+  const a = document.createElement("a");
+  a.href = server() + "/api/download?" + params;
+  document.body.appendChild(a); a.click(); a.remove();
+
+  say("Preparing your file. The download starts when it's ready.");
+  $("dlBtn").disabled = true;
+  setTimeout(() => { $("dlBtn").disabled = false; }, 8000);
+};
+</script>
+</body>
+</html>
